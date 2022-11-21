@@ -1,0 +1,187 @@
+---
+title: "problem 4"
+output: pdf_document
+---
+
+## Problem 4: Modelling Insurance Claims
+Consider the `Insurance` datasets in the `MASS` package. The data given in data frame `Insurance` consist of the numbers of policyholders of an insurance company who were exposed to risk, and the numbers of car insurance claims made by those policyholders in the third quarter of 1973.
+
+This data frame contains the following columns:
+
+`District` (factor): district of residence of policyholder (1 to 4): 4 is major cities.
+
+`Group` (an ordered factor): group of car with levels <1 litre, 1–1.5 litre, 1.5–2 litre, >2 litre.
+
+`Age` (an ordered factor): the age of the insured in 4 groups labelled <25, 25–29, 30–35, >35.
+
+`Holders` : numbers of policyholders.
+
+`Claims` : numbers of claims
+
+```{r}
+library(MASS)
+attach(Insurance)
+data = Insurance[,c('Holders','Claims')]
+plot(Insurance$Holders,Insurance$Claims
+     ,xlab = 'Holders',ylab='Claims',pch=20)
+grid()
+```
+
+**note**: If you use built-in function like `lm` or any packages then no points will be awarded.
+
+**Part A**: We want to predict the `Claims` as function of `Holders`. So we want to fit the following models:
+$$
+\texttt{Claims}_i=\beta_0 + \beta_1~\texttt{Holders}_i + \varepsilon_i,~~~i=1,2,\cdots,n
+$$
+*Assume* : $\varepsilon_i\sim n(0,\sigma^2)$. note that $\beta_0,\beta_1 \in\mathbb{R}$ and $\sigma \in \mathbb{R}^{+}$.
+
+The above model can alse be re-expressed as,
+$$
+\texttt{Claims}_i\sim n(\mu_i,\sigma^2),~~where
+$$
+$$
+\mu_i =\beta_0 + \beta_1~\texttt{Holders}_i + \varepsilon_i,~~~i=1,2,\cdots,n
+$$
+
+
+(i) Clearly write down the negative-log-likelihood function in `R`. Then use `optim` function to estimate MLE of $\theta=(\beta_0,\beta_1,\sigma)$
+(ii) Calculate **Bayesian Information Criterion** (BIC) for the model.
+
+```{r}
+thot1 = function(p0){
+  wap = function(x,par){
+    nu = with(x, par[1]+par[2]*Holders)
+    f1 = function(x,nu,sigma){
+      return ((exp(-0.5*((x-nu)^2/(sigma^2))))/(sigma*sqrt(2*pi)))
+    }
+    naur = c()
+    for (i in range(64)){
+      naur = c(naur, f1(x[i,'Claims'],nu[i],par[3]))
+    }
+    return (-sum(log(naur)))
+  }
+  fit = optim(par=p0,wap,x=data)
+  cat(cat("the optimal parameters for this model are",fit$par),sep="\n")
+  BIC = 3*log(64)+2*fit$value
+  cat("The BIC is",BIC)
+  return(fit$par)
+}
+pars = thot1(c(8,0,12))
+plot (Insurance$Holders,Insurance$Claims ,xlab = 'Holdrs',ylab='Claims',pch=20)
+x = seq(0,4000,length.out=10000)
+lines(x,pars[1]+pars[2]*x)
+grid()
+```
+
+**Part B**: now we want to fit the same model with change in distribution:
+$$
+\texttt{Claims}_i=\beta_0 + \beta_1~\texttt{Holders}_i + \varepsilon_i,~~~i=1,2,\cdots,n
+$$
+  Assume : $\varepsilon_i\sim Laplace(0,\sigma^2)$. note that $\beta_0,\beta_1 \in\mathbb{R}$ and $\sigma \in \mathbb{R}^{+}$.
+
+(i) Clearly write down the negative-log-likelihood function in `R`. Then use `optim` function to estimate MLE of $\theta=(\beta_0,\beta_1,\sigma)$
+
+(ii) Calculate **Bayesian Information Criterion** (BIC) for the model.
+
+```{r}
+thot2 = function(p0){
+  wap = function(x,par){
+    nu = with(x, par[1]+par[2]*Holders)
+    f2 = function(x,nu,sigma){
+      return ((exp(-(abs(x-nu)/(sigma))))/(2*sigma))
+    }
+    naur = c()
+    for (i in range(64)){
+      naur = c(naur, f2(x[i,'Claims'],nu[i],par[3]^2))
+    }
+    return (-sum(log(naur)))
+  }
+  fit = optim(par=p0,wap,x=data)
+  cat(cat("Optimal parameters are",fit$par),sep="\n")
+  BIC = 3*log(64)+2*fit$value
+  cat("The BIC for this model",BIC)
+  return(fit$par)
+}
+pars = thot2(c(8,0,12))
+plot(Insurance$Holders,Insurance$Claims ,xlab = 'Holders',ylab='Claims',pch=20)
+x = seq(0,4000,length.out=10000)
+lines(x,pars[1]+pars[2]*x)
+grid()
+```
+
+**Part C**: We want to fit the following models:
+$$
+\texttt{Claims}_i\sim Lognormal(\mu_i,\sigma^2), where
+$$
+$$
+\mu_i=\beta_0 + \beta_1 \log(\texttt{Holders}_i), ~~i=1,2,...,n
+$$
+
+note that $\beta_0,\beta_1 \in\mathbb{R}$ and $\sigma \in \mathbb{R}^{+}$.
+
+(i) Clearly write down the negative-log-likelihood function in `R`. Then use `optim` function to estimate MLE of $\theta=(\alpha,\beta,\sigma)$
+
+(ii) Calculate **Bayesian Information Criterion** (BIC) for the model.
+
+```{r}
+thot3 = function(p0){
+  wap = function(x,par){
+    nu = with(x, par[1]+par[2]*Holders)
+    f3 = function(x,nu,sigma){
+      return ((exp(-0.5*((log(x)-nu)^2/(sigma^2))))/(x*sigma*sqrt(2*pi)))
+    }
+    LL = c()
+    for (i in range(64)){
+      LL = c(LL, f3(x[i,'Claims'],nu[i],par[3]))
+    }
+    return (-sum(log(LL)))
+  }
+  fit = optim(par=p0,wap,x=data)
+  cat(cat("Optimal parameters are",fit$par),sep="\n")
+  BIC = 3*log(64)+2*fit$value
+  cat("The BIC for this model",BIC)
+  return(fit$par)
+}
+pars = thot3(c(8,0,12))
+plot(Insurance$Holders,Insurance$Claims ,xlab = 'Holders',ylab='Claims',pch=20)
+x = seq(0,4000,length.out=10000)
+lines(x,pars[1]+pars[2]*x)
+grid()
+```
+
+
+**Part D**: We want to fit the following models:
+$$
+\texttt{Claims}_i\sim Gamma(\alpha_i,\sigma), where
+$$
+$$
+log(\alpha_i)=\beta_0 + \beta_1 \log(\texttt{Holders}_i), ~~i=1,2,...,n
+$$
+
+```{r}
+thot4 = function(p0){
+  wap = function(x,par){
+    alpha = with(x, par[1]+par[2]*log(Holders))
+    f4 = function(x,alpha,sigma){
+      return ((exp(-x/sigma)*x^(alpha-1))/((sigma^alpha)*gamma(alpha)))
+    }
+    naur = c()
+    for (i in range(64)){
+      naur = c(naur, f4(x[i,'Claims'],exp(alpha[i]),par[3]))
+    }
+    return (-sum(log(naur)))
+  }
+  fit = optim(par=p0,wap,x=data)
+  cat(cat("Optimal parameters are",fit$par),sep="\n")
+  BIC = 3*log(64)+2*fit$value
+  cat("The BIC for this model",BIC)
+  return(fit$par)
+}
+pars = thot4(c(1,0,5))
+plot(Insurance$Holders,Insurance$Claims ,xlab = 'Holders',ylab='Claims',pch=20)
+x = seq(0,4000,length.out=10000)
+lines(x,pars[1]+pars[2]*x)
+grid()
+```
+
+
